@@ -37,8 +37,6 @@ Before running this application, make sure you have:
    cd <new-location>
    ```
 
-   (Clone the repo and make a new one for each event)
-
 2. **Install dependencies**
    ```bash
    npm install
@@ -51,11 +49,22 @@ Before running this application, make sure you have:
    TWILIO_ACCOUNT_SID=your_twilio_account_sid
    TWILIO_AUTH_TOKEN=your_twilio_auth_token
    OPENAI_API_KEY=your_openai_api_key
+
+   (you can use the '.env.example` file to get you started).
    ```
 
 4. **Prepare the mask image**
    
-   Make sure you have a `mask.png` file in the `input/` directory. This image is used as a background/mask for the anime transformation.
+   Make sure you have a `mask.png` file in the `input/` directory. This image is used as an overlay for the final cartoon image that is created. There is already the file in the directory with the correct dimensions. Ensure this is saved as *.png and is a mostly transparent image.
+
+   Example mask:
+
+
+   Example of final output:
+
+
+
+
 
 5. **Start the server**
    ```bash
@@ -70,21 +79,38 @@ Before running this application, make sure you have:
 
 ### Twilio Setup
 
-1. Create a Twilio account and get your Account SID and Auth Token
-2. Set up WhatsApp sandbox in the Twilio Console
-3. Configure your webhook URL to point to `https://your-domain.com/message` and make sure the HTTP method is POST
+1. Create a [Twilio account](https://twil.io/signup)
+2. Find your Account SID and Auth Token on your Dashboard
+3. Set up [WhatsApp sandbox in the Twilio Console](https://www.twilio.com/docs/whatsapp/sandbox)
+4. Configure your webhook URL to point to `https://your-domain.com/message` and make sure the HTTP method is POST:
+
+
 
 ### OpenAI Setup
 
-1. Get an OpenAI API key from the OpenAI platform
-2. Ensure your account has access to GPT-4o-mini and image generation capabilities
+1. Create an OpenAI account
+2. Create an OpenAI API key from the Dashboard
+3. Ensure your account has access to GPT-4o-mini and image generation capabilities
 
 ## 📱 Usage
 
-1. **Start a conversation** with your configured WhatsApp number
-2. **Send a selfie** - The bot will respond that your image is being processed
-3. **Wait for processing** - The AI will transform your photo into an anime-style cartoon
-4. **Receive the result** - The bot will send back your transformed image
+1. **Start a conversation** with your configured WhatsApp number (you can send any message such as "Hi")
+2. **Chatbot responds** with a message telling you to send a selfie or photo
+3. **Send a selfie** by taking a photo with the camera or uploading any image that's on your device
+4. **Chatbo responds** that your image is being processed
+3. **Wait for processing** as OpenAI and Sharp transform your photos into a cartoon with an overlay
+4. **Receive the image** and download it, upload, share, and enjoy
+
+NOTE: the user should receive an error if the image can't be processed, for example if OpenAI tries to create a square image (even with all the guardrails to generate portrait, this can still happen). If this is the case, send the image again and it should work. Users will also receive the error message if they have sent an image containing highly copywritten material, such as Pikachu or Chewbacca. In these cases, OpenAI has deemed the image (even if you are just wearing a tshirt with a Squirtle on it) "inappropriate" and you won't receive an image back.
+
+### Configure the bot
+
+You can configure the messaging and image styling in the `server.js` file:
+
+- **Change the style of image generated**: you can specify the type of image you'd like in the `PROMPT` which can be found on line 71
+- **Change the initial message received**: you can alter the initial message that users will see from the chatbot by changing the `message` on line 143
+- **Change the final message received**: you can alter the final message that comes through with the generated image by changing the `body` on line 124
+- **Change the error message received**: you can alter the error message that comes through in the case of an error by OpenAI by changing the `body` on line 138
 
 ## 📁 Project Structure
 
