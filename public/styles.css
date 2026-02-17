@@ -8,7 +8,7 @@
 
 body {
     font-family: 'Open Sans', 'Arial', sans-serif;
-    background: #000d25;
+    background: #000000;
     min-height: 100vh;
     padding: 20px;
 }
@@ -94,13 +94,13 @@ body {
     text-align: center;
     padding: 20px;
     background: #f8fafc;
-    border-top: 1px solid #000d25;
+    border-top: 1px solid #000000;
 }
 
 .image-counter {
     font-size: 1.1rem;
     font-weight: bold;
-    color: #000d25;
+    color: #000000;
     margin-bottom: 10px;
 }
 
@@ -112,7 +112,7 @@ body {
 .dots-container {
     text-align: center;
     padding: 15px;
-    background: #000d25;
+    background: #000000;
 }
 
 .dot {
@@ -133,18 +133,18 @@ body {
 .loading {
     text-align: center;
     padding: 50px;
-    color: #000d25;
+    color: #000000;
 }
 
 .no-images {
     text-align: center;
     padding: 50px;
-    color: #000d25;
+    color: #000000;
 }
 
 .no-images h3 {
     margin-bottom: 15px;
-    color: #000d25;
+    color: #000000;
 }
 
 .refresh-btn {
