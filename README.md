@@ -82,7 +82,8 @@ Before running this application, make sure you have:
 1. Create a [Twilio account](https://twil.io/signup)
 2. Find your Account SID and Auth Token on your Dashboard
 3. Set up [WhatsApp sandbox in the Twilio Console](https://www.twilio.com/docs/whatsapp/sandbox)
-4. Configure your webhook URL to point to `https://your-domain.com/message` and make sure the HTTP method is POST:
+4. Configure your webhook URL to point to `https://your-domain.com/message` and make sure the HTTP method is POST
+
 
 
 
@@ -102,6 +103,8 @@ Before running this application, make sure you have:
 4. **Receive the image** and download it, upload, share, and enjoy
 
 NOTE: the user should receive an error if the image can't be processed, for example if OpenAI tries to create a square image (even with all the guardrails to generate portrait, this can still happen). If this is the case, send the image again and it should work. Users will also receive the error message if they have sent an image containing highly copywritten material, such as Pikachu or Chewbacca. In these cases, OpenAI has deemed the image (even if you are just wearing a tshirt with a Squirtle on it) "inappropriate" and you won't receive an image back.
+
+NOTE: if you want to save the incoming images (for example if you are using this for a family holiday or day out with friends), you might like to have all the images in one place. In this case, uncomment lines 60-69 in `server.js`. Please consider privacy concerns before using this feature and only do so for friends and family who have given their consent. 
 
 ### Configure the bot
 
@@ -173,4 +176,4 @@ If you encounter any issues or have questions, please open an issue in the repos
 
 ---
 
-Made with ❤️ using Twilio, OpenAI, and Node.js
+Made with ❤️ using Twilio, OpenAI, and Node.js. Huge thanks to [Luís Leão](https://github.com/luisleao) who made the original code for this and created the initial idea.
