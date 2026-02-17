@@ -16,6 +16,7 @@ A WhatsApp bot that transforms user selfies into cartoon, using whatever style y
 - **Express.js** - Web framework
 - **Twilio** - WhatsApp messaging API
 - **OpenAI** - AI image generation and processing
+- **Sharp** - High-performance image processing library
 - **Axios** - HTTP client for media downloads
 - **dotenv** - Environment variable management
 
@@ -24,7 +25,7 @@ A WhatsApp bot that transforms user selfies into cartoon, using whatever style y
 Before running this application, make sure you have:
 
 - Node.js (v14 or higher)
-- A Twilio account with WhatsApp sandbox configured
+- A Twilio account with WhatsApp sandbox configured (or WhatsApp messaging)
 - An OpenAI API key with access to GPT-4o-mini and image generation
 - A public URL for webhooks (ngrok, Heroku, etc.)
 
@@ -110,7 +111,8 @@ twilio_whatsapp_cartoongenerator/
 1. **Message Reception**: Twilio webhook receives WhatsApp messages
 2. **Image Processing**: If an image is received, it's downloaded and processed
 3. **AI Transformation**: OpenAI GPT-4o-mini generates an anime-style version using the mask image
-4. **Response**: The generated cartoon is saved and sent back via WhatsApp
+4. **Image Composition**: Sharp applies the mask overlay to create the final image
+5. **Response**: The generated cartoon is saved and sent back via WhatsApp
 
 ## 🔒 Environment Variables
 
