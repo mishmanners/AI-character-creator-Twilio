@@ -1,6 +1,7 @@
 # 🎨 Twilio WhatsApp Cartoon Generator
 
-A WhatsApp bot that transforms user selfies into cartoon, using whatever style you specify. This is using Twilio, OpenAI's model, image generation capabilities, and the Sharp library. Includes a beautiful web-based gallery carousel to display all generated images.
+
+A WhatsApp bot that transforms user selfies into cartoon, using whatever style you specify. This is using Twilio, OpenAI's model, image generation capabilities, and the Sharp library. Includes a beautiful web-based gallery carousel to display all generated images, and a dashboard to see stats.
 
 ## ✨ Features
 
@@ -8,8 +9,10 @@ A WhatsApp bot that transforms user selfies into cartoon, using whatever style y
 - 🤖 **AI-Powered Image Generation**: Uses OpenAI's GPT-4o-mini with image generation tools
 - 🎭 **Cartoon Style Transformation**: Converts user photos into anime-style images
 - 🖼️ **Automatic Processing**: Processes images in the background and sends results back
-- 🎪 **Interactive Gallery**: Web-based carousel showcasing all generated images with auto-rotation
 - 📁 **File Management**: Automatically organises generated images
+- 🖼️ **Live Carousel Gallery**: Displays generated images in a rotating gallery with keyboard/arrow navigation and dot indicators
+- 📊 **Stats Dashboard**: Shows total images, successful images, failed images, unique users, and job health metrics
+- 📣 **WhatsApp Outreach Tools**: Lets you select recipients, send bulk messages, and randomly pick + notify a winner
 
 ## 🛠️ Tech Stack
 
@@ -50,13 +53,12 @@ Before running this application, make sure you have:
    TWILIO_ACCOUNT_SID=your_twilio_account_sid
    TWILIO_AUTH_TOKEN=your_twilio_auth_token
    OPENAI_API_KEY=your_openai_api_key
-
-   (you can use the '.env.example` file to get you started).
    ```
+(you can use the '.env.example` file to get you started).
 
 4. **Prepare the mask image**
    
-   Make sure you have a `mask.png` file in the `input/` directory. This image is used as an overlay for the final cartoon image that is created. There is already the file in the directory with the correct dimensions. Ensure this is saved as *.png and is a mostly transparent image.
+  Make sure you have a `mask.png` file in the `input/` directory. This image is used as an overlay for the final cartoon image that is created. There is already the file in the directory with the correct dimensions. Ensure this is saved as *.png and is a mostly transparent image.
 
    Example mask:
 
@@ -67,7 +69,6 @@ Before running this application, make sure you have:
 
    
    <img width="400" alt="MMc6d035b62beecc79214854c205e20e5e_twilio" src="https://github.com/user-attachments/assets/8ca6e43d-21dc-4a9e-8488-5aff3a00cb11" />    < >       <img width="400" alt="MMd6fc2e22e188aae55230b50f31d846b3_twilio" src="https://github.com/user-attachments/assets/0eb13095-68e2-48e2-abc9-a1700060255e" />
-
 
 5. **Start the server**
    ```bash
@@ -89,12 +90,11 @@ Before running this application, make sure you have:
 
 <img width="400" alt="Screenshot 2026-02-17 151142" src="https://github.com/user-attachments/assets/9ea65643-d2e7-446d-ac44-b85e088057ad" />
 
-
 ### OpenAI Setup
 
-1. Create an OpenAI account
-2. Create an OpenAI API key from the Dashboard
-3. Ensure your account has access to GPT-4o-mini and image generation capabilities
+1. Create an [OpenAI account](https://platform.openai.com/)
+2. Create an [OpenAI API key](https://platform.openai.com/settings/organization/api-keys) from the Dashboard
+3. Ensure your account has access to image generation capabilities
 
 ## 📱 Usage
 
@@ -171,6 +171,11 @@ In the `styles.css`:
 
 NOTE: change other colour and style elements in the CSS such as navigation buttons, dots, etc.
 
+## 🖥️ Web Pages
+
+- **Gallery (`/`)**: Carousel view of generated images with navigation controls
+- **Stats Dashboard (`/stats`)**: Metrics + outreach panel with masked phone numbers, bulk send, and winner picker
+
 ## 📁 Project Structure
 
 ```
@@ -178,9 +183,6 @@ twilio_whatsapp_cartoongenerator/
 ├── input/
 │   └── mask.png          # Background mask for anime transformation
 ├── output/               # Generated cartoon images (auto-created)
-├── public/               # Web gallery interface
-│   ├── index.html        # Carousel gallery page
-│   └── styles.css        # Gallery styling
 ├── server.js             # Main application server
 ├── utils.js              # Utility functions for media handling
 ├── package.json          # Dependencies and scripts
@@ -191,9 +193,13 @@ twilio_whatsapp_cartoongenerator/
 ## 🔧 API Endpoints
 
 - `POST /message` - Webhook endpoint for Twilio WhatsApp messages
-- `GET /` - Web gallery carousel page (HTML interface)
-- `GET /api/images` - JSON endpoint that returns list of all generated images
-- `GET /{filename}.png` - Serves generated cartoon images from the output directory
+- `GET /` - Image gallery page
+- `GET /stats` - Image creation stats + outreach dashboard page
+- `GET /api/images` - Returns generated image files for the carousel
+- `GET /api/stats` - Returns totals (images, successes, failures, unique users) and per-user phone stats
+- `POST /api/outreach/send` - Sends a WhatsApp message to selected recipients
+- `POST /api/outreach/pick-winner` - Randomly picks one recipient and sends winner message automatically
+- `GET /{messageId}.png` - Serves generated cartoon images
 
 ## 🎯 How It Works
 
@@ -210,6 +216,7 @@ twilio_whatsapp_cartoongenerator/
 | `TWILIO_ACCOUNT_SID` | Your Twilio Account SID | ✅ |
 | `TWILIO_AUTH_TOKEN` | Your Twilio Auth Token | ✅ |
 | `OPENAI_API_KEY` | Your OpenAI API Key | ✅ |
+| `TWILIO_WHATSAPP_FROM` | WhatsApp sender | ✅ |
 
 ## 📝 License
 
