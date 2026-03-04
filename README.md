@@ -1,13 +1,12 @@
 # 🎨 Twilio WhatsApp Cartoon Generator
 
-
 A WhatsApp bot that transforms user selfies into cartoon, using whatever style you specify. This is using Twilio, OpenAI's model, image generation capabilities, and the Sharp library. Includes a beautiful web-based gallery carousel to display all generated images, and a dashboard to see stats.
 
 ## ✨ Features
 
 - 📱 **WhatsApp Integration**: Receive and respond to messages via Twilio
 - 🤖 **AI-Powered Image Generation**: Uses OpenAI's GPT-4o-mini with image generation tools
-- 🎭 **Cartoon Style Transformation**: Converts user photos into anime-style images
+- 🎭 **Cartoon Style Transformation**: Converts user photos into cartoon-style images (or whatever you specify)
 - 🖼️ **Automatic Processing**: Processes images in the background and sends results back
 - 📁 **File Management**: Automatically organises generated images
 - 🖼️ **Live Carousel Gallery**: Displays generated images in a rotating gallery with keyboard/arrow navigation and dot indicators
