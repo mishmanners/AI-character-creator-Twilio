@@ -13,22 +13,22 @@ A WhatsApp bot that transforms user selfies into cartoon, using whatever style y
 
 ## 🛠️ Tech Stack
 
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **Twilio** - WhatsApp messaging API
-- **OpenAI** - AI image generation and processing
-- **Sharp** - High-performance image processing library
-- **Axios** - HTTP client for media downloads
-- **dotenv** - Environment variable management
+- **[Node.js](https://nodejs.org/en)** - Runtime environment
+- **[Express.js](https://expressjs.com/)** - Web framework
+- **[Twilio](https://www.twilio.com/)** - WhatsApp messaging API
+- **[OpenAI](https://openai.com/)** - AI image generation and processing
+- **[Sharp](https://github.com/lovell/sharp)** - High-performance image processing library
+- **[Axios](https://axios-http.com/)** - HTTP client for media downloads
+- **[dotenv](https://www.npmjs.com/package/dotenv)** - Environment variable management
 
 ## 📋 Prerequisites
 
 Before running this application, make sure you have:
 
-- Node.js (v14 or higher)
-- A Twilio account with WhatsApp sandbox configured (or WhatsApp messaging)
-- An OpenAI API key with access to GPT-4o-mini and image generation
-- A public URL for webhooks (ngrok, Heroku, etc.)
+- [Node.js](https://nodejs.org/en) (v14 or higher)
+- A [Twilio account with WhatsApp sandbox configured](https://www.twilio.com/docs/whatsapp/sandbox) (or WhatsApp messaging)
+- An [OpenAI API key](https://platform.openai.com/settings/organization/api-keys) with access to GPT-4o-mini and image generation
+- A public URL for webhooks (ie. [ngrok](https://ngrok.com/), [Heroku](https://www.heroku.com/), etc.)
 
 ## 🚀 Installation
 
