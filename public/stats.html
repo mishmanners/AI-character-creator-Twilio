@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Artwork Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="dashboard-shell">
+        <section class="top-nav">
+            <h1>Artwork Dashboard</h1>
+            <a href="/images">Open Gallery</a>
+        </section>
+
+        <section class="stats-grid">
+            <article class="stat-card">
+                <div class="stat-label">Total Images</div>
+                <div class="stat-value" id="totalImages">0</div>
+            </article>
+            <article class="stat-card">
+                <div class="stat-label">Successful Images</div>
+                <div class="stat-value" id="successfulImages">0</div>
+            </article>
+            <article class="stat-card">
+                <div class="stat-label">Failed Images</div>
+                <div class="stat-value" id="failedImages">0</div>
+            </article>
+            <article class="stat-card">
+                <div class="stat-label">Unique Users</div>
+                <div class="stat-value" id="uniqueUsers">0</div>
+            </article>
+        </section>
+
+        <section class="panel">
+            <div class="panel-title">Job Health</div>
+            <div class="health">
+                <div class="ok">
+                    <strong id="healthSuccess">0%</strong>
+                    <span>Success Rate</span>
+                </div>
+                <div class="fail">
+                    <strong id="healthFail">0%</strong>
+                    <span>Failure Rate</span>
+                </div>
+                <div>
+                    <strong id="healthRequests">0</strong>
+                    <span>Total Image Requests</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="outreach-header">
+                <div class="panel-title" style="margin:0;">WhatsApp Outreach</div>
+                <label>
+                    <input type="checkbox" id="selectAll"> Select all
+                </label>
+            </div>
+
+            <div class="recipient-list" id="recipientList"></div>
+
+            <div class="controls">
+                <textarea id="broadcastMessage" placeholder="Type a message to send to selected recipients..."></textarea>
+                <button class="btn-send" id="sendBtn">Send</button>
+                <button class="btn-winner" id="winnerBtn">Pick Winner</button>
+            </div>
+
+            <div class="status-note" id="statusNote">Load recipients to start outreach.</div>
+        </section>
+    </main>
+
+    <script>
+        let users = [];
+        let refreshIntervalId = null;
+        let isLoadingStats = false;
+        const AUTO_REFRESH_MS = 10000;
+
+        function formatPercent(value) {
+            return `${value.toFixed(1)}%`;
+        }
+
+        function selectedRecipients() {
+            return [...document.querySelectorAll('.recipient-check:checked')].map((el) => el.value);
+        }
+
+        function renderUsers(selectedSet = new Set()) {
+            const recipientList = document.getElementById('recipientList');
+            recipientList.innerHTML = '';
+
+            if (users.length === 0) {
+                recipientList.innerHTML = '<div class="recipient-row"><span></span><span>No users yet.</span></div>';
+                return;
+            }
+
+            users.forEach((user, index) => {
+                const row = document.createElement('div');
+                row.className = 'recipient-row';
+                const isChecked = selectedSet.has(user.phoneNumber) ? 'checked' : '';
+                row.innerHTML = `
+                    <input class="recipient-check" type="checkbox" value="${user.phoneNumber}" id="user-${index}" ${isChecked}>
+                    <label for="user-${index}">${user.maskedPhoneNumber}</label>
+                    <span class="hide-mobile">${user.successfulImages} success</span>
+                    <span class="pill hide-mobile">${user.failedImages} failed</span>
+                `;
+                recipientList.appendChild(row);
+            });
+        }
+
+        function syncSelectAllState() {
+            const allChecks = [...document.querySelectorAll('.recipient-check')];
+            const checkedCount = allChecks.filter((checkbox) => checkbox.checked).length;
+            const selectAll = document.getElementById('selectAll');
+
+            if (allChecks.length === 0) {
+                selectAll.checked = false;
+                return;
+            }
+
+            selectAll.checked = checkedCount === allChecks.length;
+        }
+
+        function updateStatusNote(message, isError = false) {
+            const note = document.getElementById('statusNote');
+            note.textContent = message;
+            note.style.borderColor = isError ? '#7f1d1d' : '#283a69';
+            note.style.background = isError ? '#2a1317' : '#16213f';
+        }
+
+        async function loadStats({ quiet = false } = {}) {
+            if (isLoadingStats) return;
+            isLoadingStats = true;
+
+            try {
+                const selectedSet = new Set(selectedRecipients());
+
+                const response = await fetch('/api/stats');
+                if (!response.ok) {
+                    throw new Error('Failed to load stats.');
+                }
+
+                const data = await response.json();
+
+                document.getElementById('totalImages').textContent = data.totals.totalImages;
+                document.getElementById('successfulImages').textContent = data.totals.successfulImages;
+                document.getElementById('failedImages').textContent = data.totals.failedImages;
+                document.getElementById('uniqueUsers').textContent = data.totals.uniqueUsers;
+
+                const totalRequests = data.totals.totalImageRequests || 0;
+                const successRate = totalRequests > 0 ? (data.totals.successfulImages / totalRequests) * 100 : 0;
+                const failRate = totalRequests > 0 ? (data.totals.failedImages / totalRequests) * 100 : 0;
+
+                document.getElementById('healthSuccess').textContent = formatPercent(successRate);
+                document.getElementById('healthFail').textContent = formatPercent(failRate);
+                document.getElementById('healthRequests').textContent = totalRequests;
+
+                users = data.users || [];
+                renderUsers(selectedSet);
+                syncSelectAllState();
+
+                if (!quiet) {
+                    updateStatusNote(`${users.length} phone number(s) available for WhatsApp outreach.`);
+                }
+            } finally {
+                isLoadingStats = false;
+            }
+        }
+
+        function startAutoRefresh() {
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+            }
+
+            refreshIntervalId = setInterval(() => {
+                loadStats({ quiet: true }).catch((error) => updateStatusNote(error.message, true));
+            }, AUTO_REFRESH_MS);
+        }
+
+        async function sendOutreachMessage() {
+            const recipients = selectedRecipients();
+            const message = document.getElementById('broadcastMessage').value.trim();
+
+            if (recipients.length === 0) {
+                updateStatusNote('Select at least one recipient first.', true);
+                return;
+            }
+
+            if (!message) {
+                updateStatusNote('Type a message before sending.', true);
+                return;
+            }
+
+            updateStatusNote('Sending outreach messages...');
+
+            const response = await fetch('/api/outreach/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ recipients, message })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to send message.');
+            }
+
+            updateStatusNote(`Sent to ${result.sent}/${result.totalRecipients}. Failed: ${result.failed}.`);
+        }
+
+        async function pickWinner() {
+            const recipients = selectedRecipients();
+            const message = document.getElementById('broadcastMessage').value.trim();
+
+            updateStatusNote('Picking a winner and sending message...');
+
+            const response = await fetch('/api/outreach/pick-winner', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ recipients, message })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to pick winner.');
+            }
+
+            updateStatusNote(`Winner: ${result.maskedWinner}. They have been notified automatically.`);
+        }
+
+        document.getElementById('selectAll').addEventListener('change', (event) => {
+            document.querySelectorAll('.recipient-check').forEach((checkbox) => {
+                checkbox.checked = event.target.checked;
+            });
+        });
+
+        document.getElementById('recipientList').addEventListener('change', (event) => {
+            if (event.target.classList.contains('recipient-check')) {
+                syncSelectAllState();
+            }
+        });
+
+        document.getElementById('sendBtn').addEventListener('click', async () => {
+            try {
+                await sendOutreachMessage();
+            } catch (error) {
+                updateStatusNote(error.message, true);
+            }
+        });
+
+        document.getElementById('winnerBtn').addEventListener('click', async () => {
+            try {
+                await pickWinner();
+            } catch (error) {
+                updateStatusNote(error.message, true);
+            }
+        });
+
+        loadStats()
+            .then(startAutoRefresh)
+            .catch((error) => updateStatusNote(error.message, true));
+    </script>
+</body>
+</html>
