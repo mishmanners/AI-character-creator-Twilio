@@ -258,6 +258,35 @@ body {
     color: #fca5a5;
 }
 
+.two-col-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.mini-list {
+    border: 1px solid #26355f;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.mini-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #1a2442;
+    font-size: 0.9rem;
+}
+
+.mini-row:last-child {
+    border-bottom: none;
+}
+
+.mini-row span:last-child {
+    color: #95a6d4;
+}
+
 .outreach-header {
     display: flex;
     justify-content: space-between;
@@ -359,6 +388,10 @@ button {
 
     .recipient-row .hide-mobile {
         display: none;
+    }
+
+    .two-col-panels {
+        grid-template-columns: 1fr;
     }
 }
 

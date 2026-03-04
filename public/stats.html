@@ -50,6 +50,17 @@
             </div>
         </section>
 
+        <section class="panel two-col-panels">
+            <div>
+                <div class="panel-title">Top Users</div>
+                <div class="mini-list" id="topUsersList"></div>
+            </div>
+            <div>
+                <div class="panel-title">User Geography</div>
+                <div class="mini-list" id="geographyList"></div>
+            </div>
+        </section>
+
         <section class="panel">
             <div class="outreach-header">
                 <div class="panel-title" style="margin:0;">WhatsApp Outreach</div>
@@ -127,6 +138,46 @@
             note.style.background = isError ? '#2a1317' : '#16213f';
         }
 
+        function renderTopUsers(topUsers = []) {
+            const topUsersList = document.getElementById('topUsersList');
+            topUsersList.innerHTML = '';
+
+            if (!topUsers.length) {
+                topUsersList.innerHTML = '<div class="mini-row"><span>No users yet.</span></div>';
+                return;
+            }
+
+            topUsers.forEach((user) => {
+                const row = document.createElement('div');
+                row.className = 'mini-row';
+                row.innerHTML = `
+                    <span>${user.maskedPhoneNumber}</span>
+                    <span>${user.successfulImages} images</span>
+                `;
+                topUsersList.appendChild(row);
+            });
+        }
+
+        function renderGeography(geography = []) {
+            const geographyList = document.getElementById('geographyList');
+            geographyList.innerHTML = '';
+
+            if (!geography.length) {
+                geographyList.innerHTML = '<div class="mini-row"><span>No geography data yet.</span></div>';
+                return;
+            }
+
+            geography.forEach((item) => {
+                const row = document.createElement('div');
+                row.className = 'mini-row';
+                row.innerHTML = `
+                    <span>${item.label}</span>
+                    <span>${item.successfulImages} images</span>
+                `;
+                geographyList.appendChild(row);
+            });
+        }
+
         async function loadStats({ quiet = false } = {}) {
             if (isLoadingStats) return;
             isLoadingStats = true;
@@ -157,6 +208,8 @@
                 users = data.users || [];
                 renderUsers(selectedSet);
                 syncSelectAllState();
+                renderTopUsers(data.topUsers || []);
+                renderGeography(data.geography || []);
 
                 if (!quiet) {
                     updateStatusNote(`${users.length} phone number(s) available for WhatsApp outreach.`);

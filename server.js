@@ -23,6 +23,7 @@ app.use(express.urlencoded({ extended: false }));
 let maskFileId = null;
 
 const twilio = require('twilio');
+const { parsePhoneNumberFromString } = require('libphonenumber-js');
 const {
     TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, OPENAI_API_KEY
 } = process.env;
@@ -102,7 +103,60 @@ function toMaskedPhone(phoneNumber = '') {
     const country = digits.length > 10 ? `+${digits.slice(0, digits.length - 10)} ` : '';
     const areaCode = local.slice(0, 3);
     const lastThree = local.slice(-3);
-    return `${country}(${areaCode}) ***-***-${lastThree}`;
+    return `${country}(${areaCode}) ******${lastThree}`;
+}
+
+function parsePhoneParts(phoneNumber = '') {
+    const cleaned = String(phoneNumber).trim().replace(/^whatsapp:/, '');
+    const parsed = parsePhoneNumberFromString(cleaned);
+
+    if (parsed) {
+        const nationalNumber = String(parsed.nationalNumber || '');
+        return {
+            countryCode: String(parsed.countryCallingCode || 'unknown'),
+            countryIso: parsed.country || 'unknown',
+            areaCode: nationalNumber.slice(0, 3) || 'unknown'
+        };
+    }
+
+    const digits = cleaned.replace(/\D/g, '');
+    if (digits.length < 6) {
+        return {
+            countryCode: 'unknown',
+            countryIso: 'unknown',
+            areaCode: 'unknown'
+        };
+    }
+
+    const local = digits.length >= 10 ? digits.slice(-10) : digits;
+    const countryDigits = digits.length > 10 ? digits.slice(0, digits.length - 10) : '1';
+    return {
+        countryCode: countryDigits || 'unknown',
+        countryIso: 'unknown',
+        areaCode: local.slice(0, 3) || 'unknown'
+    };
+}
+
+function geographyLabelFromPhone(phoneNumber = '') {
+    const { countryCode, countryIso, areaCode } = parsePhoneParts(phoneNumber);
+
+    let countryLabel = `Country +${countryCode}`;
+    if (countryIso && countryIso !== 'unknown') {
+        try {
+            const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+            countryLabel = regionNames.of(countryIso) || countryLabel;
+        } catch (error) {
+            countryLabel = `Country +${countryCode}`;
+        }
+    } else if (countryCode === '1') {
+        countryLabel = 'United States/Canada';
+    }
+
+    if (countryCode === '1' && areaCode !== 'unknown') {
+        return `${countryLabel} (+${countryCode}, Area ${areaCode})`;
+    }
+
+    return `${countryLabel} (+${countryCode})`;
 }
 
 function unique(values) {
@@ -169,6 +223,45 @@ function buildAnimeStats() {
         return new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0);
     });
 
+    const topUsers = [...userStats]
+        .sort((a, b) => {
+            if (b.successfulImages !== a.successfulImages) {
+                return b.successfulImages - a.successfulImages;
+            }
+            if (b.totalAttempts !== a.totalAttempts) {
+                return b.totalAttempts - a.totalAttempts;
+            }
+            return new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0);
+        })
+        .slice(0, 5)
+        .map((user) => ({
+            phoneNumber: user.phoneNumber,
+            maskedPhoneNumber: user.maskedPhoneNumber,
+            successfulImages: user.successfulImages,
+            totalAttempts: user.totalAttempts
+        }));
+
+    const geographyMap = new Map();
+    for (const user of userStats) {
+        const key = geographyLabelFromPhone(user.phoneNumber);
+        const current = geographyMap.get(key) || {
+            label: key,
+            userCount: 0,
+            successfulImages: 0
+        };
+
+        current.userCount += 1;
+        current.successfulImages += user.successfulImages;
+        geographyMap.set(key, current);
+    }
+
+    const geography = [...geographyMap.values()].sort((a, b) => {
+        if (b.successfulImages !== a.successfulImages) {
+            return b.successfulImages - a.successfulImages;
+        }
+        return b.userCount - a.userCount;
+    });
+
     return {
         totals: {
             totalImages: successfulJobs.length,
@@ -177,7 +270,9 @@ function buildAnimeStats() {
             uniqueUsers: users.length,
             totalImageRequests: jobs.length
         },
-        users: userStats
+        users: userStats,
+        topUsers,
+        geography
     };
 }
 
@@ -260,7 +355,7 @@ app.post('/message', async (req, res) => {
             fs.writeFileSync(inputImagePath, Buffer.from(base64Image.base64, "base64"));
             console.log('Saved input image:', inputImagePath); */
 
-             // Add your prompt here and tell it what you want.
+            // Add your prompt here and tell it what you want.
 
             const PROMPT = `CHANGE THIS TO YOUR PROMPT. You can be as creative as you like! For example, you could say "Turn this image into a Van Gogh painting" or "Make this look like a Pixar-style character". The more specific you are, the better the results will be.`;
 
@@ -353,7 +448,7 @@ app.post('/message', async (req, res) => {
                 await twilioClient.messages.create({
                 from: req.body.To,
                 to: req.body.From, 
-                body: `Your new anime-style image is ready. Enjoy 🥳. Feel free to share on socials.`,
+                body: `Your new image is ready. Enjoy 🥳. Feel free to share on socials.`,
                 mediaUrl: `https://${req.headers['x-forwarded-host']}/${req.body.SmsMessageSid}_twilio.png`
                 });
 
