@@ -2,9 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const app = new express();
-
 const fs = require('fs');
-
 const path = require('path');
 
 const { upsertJob } = require('./jobStorage');
@@ -128,7 +126,6 @@ app.post('/message', async (req, res) => {
             console.log('Saved input image:', inputImagePath); */
 
             // Add your prompt here and tell it what you want.
-
             const PROMPT = `CHANGE THIS TO YOUR PROMPT. You can be as creative as you like! For example, you could say "Turn this image into a Van Gogh painting" or "Make this look like a Pixar-style character". The more specific you are, the better the results will be.`;
 
             const response = await withTimeout(
