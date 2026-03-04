@@ -70,7 +70,7 @@ app.post('/message', async (req, res) => {
 
             // Add your prompt here and tell it what you want.
 
-            const PROMPT = `CHANGE THIS TO YOUR PROMPT. You can be as creative as you like! For example, you could say "Turn this image into a Van Gogh painting" or "Make this look like a Pixar-style character". The more specific you are, the better the results will be.`;'`;
+            const PROMPT = `CHANGE THIS TO YOUR PROMPT. You can be as creative as you like! For example, you could say "Turn this image into a Van Gogh painting" or "Make this look like a Pixar-style character". The more specific you are, the better the results will be.`;
 
             const response = await openai.responses.create({
                 model: "gpt-4o-mini",
@@ -123,7 +123,7 @@ app.post('/message', async (req, res) => {
                 await twilioClient.messages.create({
                 from: req.body.To,
                 to: req.body.From, 
-                body: `Your new anime-style image is ready. Enjoy 🥳. Feel free to share on socials with the event tag: #DDDMelb.`,
+                body: `Your new anime-style image is ready. Enjoy 🥳. Feel free to share on socials.`,
                 mediaUrl: `https://${req.headers['x-forwarded-host']}/${req.body.SmsMessageSid}_twilio.png`
                 })
 
