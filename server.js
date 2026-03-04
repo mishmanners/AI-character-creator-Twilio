@@ -7,8 +7,8 @@ const fs = require('fs');
 
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, 'output');
-const JOB_LOG_FILE = path.join(DATA_DIR, 'jobs.json');
+const { upsertJob } = require('./jobStorage');
+const dashboardRouter = require('./dashboard');
 
 // Ignore favicon.ico requests to prevent 404 errors
 app.get('/favicon.ico', (req, res) => {
@@ -19,6 +19,9 @@ app.use(express.static('public'));
 app.use(express.static('output'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Mount dashboard routes
+app.use(dashboardRouter);
 
 let maskFileId = null;
 
@@ -43,237 +46,6 @@ function withTimeout(promise, timeoutMs, operationName) {
             }, timeoutMs);
         })
     ]);
-}
-
-function ensureJobStorage() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-
-    if (!fs.existsSync(JOB_LOG_FILE)) {
-        fs.writeFileSync(JOB_LOG_FILE, JSON.stringify([], null, 2));
-    }
-}
-
-function readJobLog() {
-    ensureJobStorage();
-    try {
-        const raw = fs.readFileSync(JOB_LOG_FILE, 'utf8');
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-        console.error('Failed to read job log:', error);
-        return [];
-    }
-}
-
-function writeJobLog(entries) {
-    ensureJobStorage();
-    fs.writeFileSync(JOB_LOG_FILE, JSON.stringify(entries, null, 2));
-}
-
-function upsertJob(update) {
-    const jobs = readJobLog();
-    const index = jobs.findIndex((job) => job.messageSid === update.messageSid);
-    if (index >= 0) {
-        jobs[index] = {
-            ...jobs[index],
-            ...update,
-            updatedAt: new Date().toISOString()
-        };
-    } else {
-        jobs.push({
-            ...update,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        });
-    }
-    writeJobLog(jobs);
-}
-
-function toMaskedPhone(phoneNumber = '') {
-    const cleaned = String(phoneNumber).trim();
-    const digits = cleaned.replace(/\D/g, '');
-
-    if (digits.length < 6) {
-        return cleaned;
-    }
-
-    const local = digits.length >= 10 ? digits.slice(-10) : digits;
-    const country = digits.length > 10 ? `+${digits.slice(0, digits.length - 10)} ` : '';
-    const areaCode = local.slice(0, 3);
-    const lastThree = local.slice(-3);
-    return `${country}(${areaCode}) ******${lastThree}`;
-}
-
-function parsePhoneParts(phoneNumber = '') {
-    const cleaned = String(phoneNumber).trim().replace(/^whatsapp:/, '');
-    const parsed = parsePhoneNumberFromString(cleaned);
-
-    if (parsed) {
-        const nationalNumber = String(parsed.nationalNumber || '');
-        return {
-            countryCode: String(parsed.countryCallingCode || 'unknown'),
-            countryIso: parsed.country || 'unknown',
-            areaCode: nationalNumber.slice(0, 3) || 'unknown'
-        };
-    }
-
-    const digits = cleaned.replace(/\D/g, '');
-    if (digits.length < 6) {
-        return {
-            countryCode: 'unknown',
-            countryIso: 'unknown',
-            areaCode: 'unknown'
-        };
-    }
-
-    const local = digits.length >= 10 ? digits.slice(-10) : digits;
-    const countryDigits = digits.length > 10 ? digits.slice(0, digits.length - 10) : '1';
-    return {
-        countryCode: countryDigits || 'unknown',
-        countryIso: 'unknown',
-        areaCode: local.slice(0, 3) || 'unknown'
-    };
-}
-
-function geographyLabelFromPhone(phoneNumber = '') {
-    const { countryCode, countryIso, areaCode } = parsePhoneParts(phoneNumber);
-
-    let countryLabel = `Country +${countryCode}`;
-    if (countryIso && countryIso !== 'unknown') {
-        try {
-            const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
-            countryLabel = regionNames.of(countryIso) || countryLabel;
-        } catch (error) {
-            countryLabel = `Country +${countryCode}`;
-        }
-    } else if (countryCode === '1') {
-        countryLabel = 'United States/Canada';
-    }
-
-    if (countryCode === '1' && areaCode !== 'unknown') {
-        return `${countryLabel} (+${countryCode}, Area ${areaCode})`;
-    }
-
-    return `${countryLabel} (+${countryCode})`;
-}
-
-function unique(values) {
-    return [...new Set(values.filter(Boolean))];
-}
-
-function normalizeRecipient(number) {
-    const trimmed = String(number || '').trim();
-    if (!trimmed) {
-        return '';
-    }
-    return trimmed.startsWith('whatsapp:') ? trimmed : `whatsapp:${trimmed}`;
-}
-
-function getOutboundWhatsappFrom() {
-    if (process.env.TWILIO_WHATSAPP_FROM) {
-        return normalizeRecipient(process.env.TWILIO_WHATSAPP_FROM);
-    }
-    if (process.env.WHATSAPP_FROM) {
-        return normalizeRecipient(process.env.WHATSAPP_FROM);
-    }
-
-    const jobs = readJobLog();
-    const recentWithTo = jobs
-        .filter((job) => !!job.to)
-        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    return recentWithTo.length > 0 ? recentWithTo[0].to : null;
-}
-
-function buildAnimeStats() {
-    const jobs = readJobLog().filter((job) => job.messageType === 'image');
-    const successfulJobs = jobs.filter((job) => job.status === 'success');
-    const failedJobs = jobs.filter((job) => job.status === 'failed');
-    const users = unique(jobs.map((job) => job.from));
-
-    const userMap = new Map();
-    for (const job of jobs) {
-        if (!job.from) continue;
-
-        const current = userMap.get(job.from) || {
-            phoneNumber: job.from,
-            maskedPhoneNumber: toMaskedPhone(job.from),
-            totalAttempts: 0,
-            successfulImages: 0,
-            failedImages: 0,
-            lastSeen: job.updatedAt || job.createdAt
-        };
-
-        current.totalAttempts += 1;
-        if (job.status === 'success') current.successfulImages += 1;
-        if (job.status === 'failed') current.failedImages += 1;
-
-        const currentLastSeen = new Date(current.lastSeen || 0);
-        const jobDate = new Date(job.updatedAt || job.createdAt || 0);
-        if (jobDate > currentLastSeen) {
-            current.lastSeen = job.updatedAt || job.createdAt;
-        }
-
-        userMap.set(job.from, current);
-    }
-
-    const userStats = [...userMap.values()].sort((a, b) => {
-        return new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0);
-    });
-
-    const topUsers = [...userStats]
-        .sort((a, b) => {
-            if (b.successfulImages !== a.successfulImages) {
-                return b.successfulImages - a.successfulImages;
-            }
-            if (b.totalAttempts !== a.totalAttempts) {
-                return b.totalAttempts - a.totalAttempts;
-            }
-            return new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0);
-        })
-        .slice(0, 5)
-        .map((user) => ({
-            phoneNumber: user.phoneNumber,
-            maskedPhoneNumber: user.maskedPhoneNumber,
-            successfulImages: user.successfulImages,
-            totalAttempts: user.totalAttempts
-        }));
-
-    const geographyMap = new Map();
-    for (const user of userStats) {
-        const key = geographyLabelFromPhone(user.phoneNumber);
-        const current = geographyMap.get(key) || {
-            label: key,
-            userCount: 0,
-            successfulImages: 0
-        };
-
-        current.userCount += 1;
-        current.successfulImages += user.successfulImages;
-        geographyMap.set(key, current);
-    }
-
-    const geography = [...geographyMap.values()].sort((a, b) => {
-        if (b.successfulImages !== a.successfulImages) {
-            return b.successfulImages - a.successfulImages;
-        }
-        return b.userCount - a.userCount;
-    });
-
-    return {
-        totals: {
-            totalImages: successfulJobs.length,
-            successfulImages: successfulJobs.length,
-            failedImages: failedJobs.length,
-            uniqueUsers: users.length,
-            totalImageRequests: jobs.length
-        },
-        users: userStats,
-        topUsers,
-        geography
-    };
 }
 
 
@@ -355,9 +127,7 @@ app.post('/message', async (req, res) => {
             fs.writeFileSync(inputImagePath, Buffer.from(base64Image.base64, "base64"));
             console.log('Saved input image:', inputImagePath); */
 
-            // Add your prompt here and tell it what you want.
-
-            const PROMPT = `CHANGE THIS TO YOUR PROMPT. You can be as creative as you like! For example, you could say "Turn this image into a Van Gogh painting" or "Make this look like a Pixar-style character". The more specific you are, the better the results will be.`;
+            const PROMPT = `Create a joseim, moe anime style image of the person(s) in the photo. ALWAYS make sure the image is in PORTRAIT orientation using only dimensions "1024x1536". Always make sure the image is in portrait orientation, and if the original image is in landscape orientation, make sure the new image is in portrait orientation. Clean white background, and only white background, not transparent. Don't add any new person if the original image doesn't have that person. Don't add any text in the image. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Don't add any extra objects in the image, only the person(s) in the original photo, and only objects that the person is wearing, holding, or interacting with in the original photo, for example if the person is sitting on a chair. If there are multiple people in the photo, make sure to include all of them in the generated image.'`;
 
             const response = await withTimeout(
                 openai.responses.create({
@@ -448,7 +218,7 @@ app.post('/message', async (req, res) => {
                 await twilioClient.messages.create({
                 from: req.body.To,
                 to: req.body.From, 
-                body: `Your new image is ready. Enjoy 🥳. Feel free to share on socials.`,
+                body: `Your new anime-style image is ready. Enjoy 🥳. Feel free to share on socials using #Programmable2026.`,
                 mediaUrl: `https://${req.headers['x-forwarded-host']}/${req.body.SmsMessageSid}_twilio.png`
                 });
 
@@ -496,120 +266,8 @@ app.post('/message', async (req, res) => {
 
 });
 
-// API endpoint to get list of all images
-app.get('/api/images', async (req, res) => {
-    try {
-        if (!fs.existsSync('output')) {
-            return res.json([]);
-        }
-        
-        const files = fs.readdirSync('output')
-            .filter(file => file.toLowerCase().endsWith('.png'))
-            .map(file => ({
-                name: file,
-                url: `/${file}`,
-                created: fs.statSync(`output/${file}`).birthtime
-            }))
-            .sort((a, b) => new Date(b.created) - new Date(a.created)); // Most recent first
-        
-        res.json(files);
-    } catch (error) {
-        console.error('Error reading images:', error);
-        res.status(500).json({ error: 'Failed to load images' });
-    }
-});
-
-app.get('/api/stats', async (req, res) => {
-    try {
-        const stats = buildAnimeStats();
-        res.json(stats);
-    } catch (error) {
-        console.error('Error building anime stats:', error);
-        res.status(500).json({ error: 'Failed to load anime stats' });
-    }
-});
-
-app.post('/api/outreach/send', async (req, res) => {
-    try {
-        const recipients = Array.isArray(req.body.recipients) ? req.body.recipients : [];
-        const message = String(req.body.message || '').trim();
-
-        if (!recipients.length) {
-            return res.status(400).json({ error: 'Please provide at least one recipient.' });
-        }
-
-        if (!message) {
-            return res.status(400).json({ error: 'Message is required.' });
-        }
-
-        const from = getOutboundWhatsappFrom();
-        if (!from) {
-            return res.status(400).json({ error: 'No outbound WhatsApp sender found. Set TWILIO_WHATSAPP_FROM in .env.' });
-        }
-
-        const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-        const uniqueRecipients = unique(recipients.map(normalizeRecipient));
-
-        const results = await Promise.allSettled(
-            uniqueRecipients.map((to) => twilioClient.messages.create({ from, to, body: message }))
-        );
-
-        const successful = results.filter((result) => result.status === 'fulfilled').length;
-        const failed = results.length - successful;
-
-        res.json({
-            sent: successful,
-            failed,
-            totalRecipients: uniqueRecipients.length
-        });
-    } catch (error) {
-        console.error('Error sending outreach messages:', error);
-        res.status(500).json({ error: 'Failed to send outreach messages' });
-    }
-});
-
-app.post('/api/outreach/pick-winner', async (req, res) => {
-    try {
-        const fallbackRecipients = buildAnimeStats().users.map((user) => user.phoneNumber);
-        const requestedRecipients = Array.isArray(req.body.recipients) ? req.body.recipients : [];
-        const recipientPool = unique((requestedRecipients.length ? requestedRecipients : fallbackRecipients).map(normalizeRecipient));
-
-        if (!recipientPool.length) {
-            return res.status(400).json({ error: 'No recipients available to pick a winner.' });
-        }
-
-        const winner = recipientPool[Math.floor(Math.random() * recipientPool.length)];
-        const message = String(req.body.message || '').trim() || '🎉 Congratulations! You are today\'s winner. Please come by the Twilio booth to claim your prize.';
-
-        const from = getOutboundWhatsappFrom();
-        if (!from) {
-            return res.status(400).json({ error: 'No outbound WhatsApp sender found. Set TWILIO_WHATSAPP_FROM in .env.' });
-        }
-
-        const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-        await twilioClient.messages.create({
-            from,
-            to: winner,
-            body: message
-        });
-
-        res.json({
-            winner,
-            maskedWinner: toMaskedPhone(winner),
-            message: 'Winner selected and notified successfully.'
-        });
-    } catch (error) {
-        console.error('Error picking winner:', error);
-        res.status(500).json({ error: 'Failed to pick and notify winner' });
-    }
-});
-
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/stats', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'stats.html'));
 });
 
 const port = parseInt(process.env.PORT || '3001');
