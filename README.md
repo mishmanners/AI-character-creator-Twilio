@@ -60,11 +60,13 @@ Before running this application, make sure you have:
 
    Example mask:
 
-
-   Example of final output:
-
+   <img width="400" alt="FinalLogo" src="https://github.com/user-attachments/assets/5b2ad25c-0bba-454d-aeb7-7b4834427162" />
 
 
+   Examples of final output:
+
+   
+   <img width="400" alt="MMc6d035b62beecc79214854c205e20e5e_twilio" src="https://github.com/user-attachments/assets/8ca6e43d-21dc-4a9e-8488-5aff3a00cb11" />    < >       <img width="400" alt="MMd6fc2e22e188aae55230b50f31d846b3_twilio" src="https://github.com/user-attachments/assets/0eb13095-68e2-48e2-abc9-a1700060255e" />
 
 
 5. **Start the server**
@@ -85,7 +87,7 @@ Before running this application, make sure you have:
 3. Set up [WhatsApp sandbox in the Twilio Console](https://www.twilio.com/docs/whatsapp/sandbox)
 4. Configure your webhook URL to point to `https://your-domain.com/message` and make sure the HTTP method is POST:
 
-
+<img width="400" alt="Screenshot 2026-02-17 151142" src="https://github.com/user-attachments/assets/9ea65643-d2e7-446d-ac44-b85e088057ad" />
 
 
 ### OpenAI Setup
