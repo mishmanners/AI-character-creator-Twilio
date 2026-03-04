@@ -29,7 +29,6 @@ const {
     TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, OPENAI_API_KEY
 } = process.env;
 
-
 const { OpenAI } = require('openai');
 const openai = new OpenAI({
     apiKey: OPENAI_API_KEY

@@ -150,10 +150,10 @@ https://your-domain.com/
 
 You can configure the messaging and image styling in the `server.js` file:
 
-- **Change the style of image generated**: you can specify the type of image you'd like in the `PROMPT` which can be found on line 129
-- **Change the initial message received**: you can alter the initial message that users will see from the chatbot by changing the `message` on line 262
-- **Change the final message received**: you can alter the final message that comes through with the generated image by changing the `body` on line 220
-- **Change the error message received**: you can alter the error message that comes through in the case of an error by OpenAI by changing the `body` on line 257
+- **Change the style of image generated**: you can specify the type of image you'd like in the `PROMPT` which can be found on line 128
+- **Change the initial message received**: you can alter the initial message that users will see from the chatbot by changing the `message` on line 261
+- **Change the final message received**: you can alter the final message that comes through with the generated image by changing the `body` on line 219
+- **Change the error message received**: you can alter the error message that comes through in the case of an error by OpenAI by changing the `body` on line 256
 
 
 ### Configure the carousel display
