@@ -113,7 +113,7 @@ app.post('/message', async (req, res) => {
 
             console.log(`[${messageSid}] Sending media to OpenAI image generation.`);
 
-            //Create input_images folder if it doesn't exist
+            // Create input_images folder if it doesn't exist
             /* uncomment this section if you want to save the input images
             if (!fs.existsSync('input_images')) {
                 fs.mkdirSync('input_images');
