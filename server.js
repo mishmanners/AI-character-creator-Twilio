@@ -163,7 +163,7 @@ app.post('/message', async (req, res) => {
 
             const response = await withTimeout(
                 openai.images.edit({
-                    model: 'gpt-image-1',
+                    model: 'gpt-image-1.5',
                     prompt: PROMPT,
                     image: sourceImageFile,
                     size: '1024x1536'
