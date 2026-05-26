@@ -17,6 +17,60 @@ const {
     TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
 } = process.env;
 
+const imageStreamClients = new Set();
+
+function getGalleryImages() {
+    if (!fs.existsSync('output')) {
+        return [];
+    }
+
+    return fs.readdirSync('output')
+        .filter((file) => file.toLowerCase().endsWith('_twilio.png'))
+        .map((file) => ({
+            name: file,
+            url: `/${file}`,
+            created: fs.statSync(path.join('output', file)).birthtime
+        }))
+        .sort((a, b) => new Date(b.created) - new Date(a.created));
+}
+
+function getGallerySignature(items) {
+    return items
+        .map((item) => `${item.name}:${new Date(item.created).getTime()}`)
+        .join('|');
+}
+
+function pushImageEvent(event, payload) {
+    const data = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+
+    for (const client of imageStreamClients) {
+        try {
+            client.write(data);
+        } catch (error) {
+            // Client disconnected; it will be cleaned up on close.
+        }
+    }
+}
+
+let lastGallerySignature = getGallerySignature(getGalleryImages());
+
+const imageWatcherInterval = setInterval(() => {
+    const images = getGalleryImages();
+    const signature = getGallerySignature(images);
+
+    if (signature !== lastGallerySignature) {
+        lastGallerySignature = signature;
+        pushImageEvent('images_update', {
+            count: images.length,
+            timestamp: Date.now()
+        });
+    }
+}, 1500);
+
+if (typeof imageWatcherInterval.unref === 'function') {
+    imageWatcherInterval.unref();
+}
+
 function buildAnimeStats() {
     const jobs = readJobLog().filter((job) => job.messageType === 'image');
     const successfulJobs = jobs.filter((job) => job.status === 'success');
@@ -109,24 +163,37 @@ function buildAnimeStats() {
 // API endpoint to get list of all images
 router.get('/api/images', async (req, res) => {
     try {
-        if (!fs.existsSync('output')) {
-            return res.json([]);
-        }
-        
-        const files = fs.readdirSync('output')
-            .filter(file => file.toLowerCase().endsWith('.png'))
-            .map(file => ({
-                name: file,
-                url: `/${file}`,
-                created: fs.statSync(`output/${file}`).birthtime
-            }))
-            .sort((a, b) => new Date(b.created) - new Date(a.created)); // Most recent first
-        
+        const files = getGalleryImages();
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.json(files);
     } catch (error) {
         console.error('Error reading images:', error);
         res.status(500).json({ error: 'Failed to load images' });
     }
+});
+
+router.get('/api/images/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+
+    if (typeof res.flushHeaders === 'function') {
+        res.flushHeaders();
+    }
+
+    imageStreamClients.add(res);
+
+    res.write(`event: connected\ndata: ${JSON.stringify({ timestamp: Date.now() })}\n\n`);
+
+    const heartbeat = setInterval(() => {
+        res.write(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: Date.now() })}\n\n`);
+    }, 20000);
+
+    req.on('close', () => {
+        clearInterval(heartbeat);
+        imageStreamClients.delete(res);
+        res.end();
+    });
 });
 
 // API endpoint to get stats
