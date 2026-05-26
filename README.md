@@ -9,7 +9,7 @@ A WhatsApp bot that transforms user selfies into cartoon, using whatever style y
 - 🎭 **Cartoon Style Transformation**: Converts user photos into cartoon-style images (or whatever you specify)
 - 🖼️ **Automatic Processing**: Processes images in the background and sends results back
 - 📁 **File Management**: Automatically organises generated images
-- 🖼️ **Live Carousel Gallery**: Displays generated images in a rotating gallery with keyboard/arrow navigation and dot indicators
+- 🖼️ **Live Carousel Gallery**: Displays generated images in a rotating gallery with keyboard/arrow navigation, dot indicators, and a fun flipbook animation
 - 📊 **Stats Dashboard**: Shows total images, successful images, failed images, unique users, and job health metrics
 - 📣 **WhatsApp Outreach Tools**: Lets you select recipients, send bulk messages, and randomly pick + notify a winner
 
@@ -95,6 +95,7 @@ Before running this application, make sure you have:
 1. Create an [OpenAI account](https://platform.openai.com/)
 2. Create an [OpenAI API key](https://platform.openai.com/settings/organization/api-keys) from the Dashboard
 3. Ensure your account has access to image generation capabilities
+4. Choose the image generation model you'd like to use on in `server.js` on line 256
 
 ## 📱 Usage
 
@@ -107,7 +108,7 @@ Before running this application, make sure you have:
 
 NOTE: the user should receive an error if the image can't be processed, for example if OpenAI tries to create a square image (even with all the guardrails to generate portrait, this can still happen). If this is the case, send the image again and it should work. Users will also receive the error message if they have sent an image containing highly copywritten material, such as Pikachu or Chewbacca. In these cases, OpenAI has deemed the image (even if you are just wearing a tshirt with a Squirtle on it) "inappropriate" and you won't receive an image back.
 
-NOTE: if you want to save the incoming images (for example if you are using this for a family holiday or day out with friends), you might like to have all the images in one place. In this case, uncomment lines 60-69 in `server.js`. Please consider privacy concerns before using this feature and only do so for friends and family who have given their consent. 
+NOTE: if you want to save the incoming images (for example if you are using this for a family holiday or day out with friends), you might like to have all the images in one place. In this case, uncomment lines 126-135 in `server.js`. Please consider privacy concerns before using this feature and only do so for friends and family who have given their consent. 
 
 ## 🖼️ Image Gallery Carousel
 
@@ -151,30 +152,30 @@ https://your-domain.com/
 
 You can configure the messaging and image styling in the `server.js` file:
 
-- **Change the style of image generated**: you can specify the type of image you'd like in the `PROMPT` which can be found on line 128
-- **Change the initial message received**: you can alter the initial message that users will see from the chatbot by changing the `message` on line 261
-- **Change the final message received**: you can alter the final message that comes through with the generated image by changing the `body` on line 219
-- **Change the error message received**: you can alter the error message that comes through in the case of an error by OpenAI by changing the `body` on line 256
-
+- **Change the style of image generated**: you can specify the type of image you'd like in the `PROMPT` which can be found on line 137
+- **Change the initial message received**: you can alter the initial message that users will see from the chatbot by changing the `message` on line 92
+- **Change the final message received**: you can alter the final message that comes through with the generated image by changing the `body` on line 206
+- **Change the error message received**: you can alter the error message that comes through in the case of an error by OpenAI by changing the `body` on line 242
+- **Change the "other" message sent if no image detected**: you can alter message that comes through in the event that no image is sent by the `twiml.message` on line 247
 
 ### Configure the carousel display
 
 You can change how the carousel is displayed in the CSS and HTML pages:
 
 In the `index.html`:
-- **Change the heading**: alter the heading that's displayed by changing `h1` or `h2` on lines 25-26
+- **Change the heading**: alter the heading that's displayed by changing `h1` or `h2` on lines 11-12
 
 In the `styles.css`:
-- **Change the background colour of the webpage**: on line 11
-- **Change the background colour of the carousel**: on line 38
-- **Change the text colour**: on line 18
+- **Change the background colour of the webpage**: on line 9
+- **Change the background colour of the carousel**: on line 36
+- **Change the text colour**: on line 9
 
-NOTE: change other colour and style elements in the CSS such as navigation buttons, dots, etc.
+NOTE: change other colour and style elements in the CSS such as navigation buttons, dots, hover etc.
 
 ### Configure the dashboard
 
 You can change the titles and things shown in dashboard by changing:
-- `dashboard.js` for configuring the infomration collection
+- `dashboard.js` for configuring the information collection
 - `stats.html` for configuring how the information is shown on the webpage
 
 ## 🖥️ Web Pages
