@@ -30,7 +30,7 @@ Before running this application, make sure you have:
 
 - [Node.js](https://nodejs.org/en) (v14 or higher)
 - A [Twilio account with WhatsApp sandbox configured](https://www.twilio.com/docs/whatsapp/sandbox) (or WhatsApp messaging)
-- An [OpenAI API key](https://platform.openai.com/settings/organization/api-keys) with access to GPT-4o-mini and image generation
+- An [OpenAI API key](https://platform.openai.com/settings/organization/api-keys) with access to image generation
 - A public URL for webhooks (ie. [ngrok](https://ngrok.com/), [Heroku](https://www.heroku.com/), etc.)
 
 ## 🚀 Installation
