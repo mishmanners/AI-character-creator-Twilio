@@ -14,7 +14,16 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 app.use(express.static('public'));
-app.use(express.static('output'));
+app.use(express.static('output', {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('Surrogate-Control', 'no-store');
+    }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -29,7 +38,9 @@ const {
     TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, OPENAI_API_KEY
 } = process.env;
 
+
 const { OpenAI } = require('openai');
+const { toFile } = require('openai/uploads');
 const openai = new OpenAI({
     apiKey: OPENAI_API_KEY
 });
@@ -44,7 +55,6 @@ function withTimeout(promise, timeoutMs, operationName) {
         })
     ]);
 }
-
 
 async function createFile(filePath) {
     const fileContent = fs.createReadStream(filePath);
@@ -124,84 +134,60 @@ app.post('/message', async (req, res) => {
             fs.writeFileSync(inputImagePath, Buffer.from(base64Image.base64, "base64"));
             console.log('Saved input image:', inputImagePath); */
 
-            // Add your prompt here and tell it what you want.
-            const PROMPT = `CHANGE THIS TO YOUR PROMPT. You can be as creative as you like! For example, you could say "Turn this image into a Van Gogh painting" or "Make this look like a Pixar-style character". The more specific you are, the better the results will be.`;
+            const PROMPT = `Create a joseim, moe anime style image of the person(s) in the photo. Clean white background, and only white background, not transparent. Don't add any new person if the original image doesn't have that person. Don't add any text in the image. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Don't add any extra objects in the image, only the person(s) in the original photo, and only objects that the person is wearing, holding, or interacting with in the original photo, for example if the person is sitting on a chair. If there are multiple people in the photo, make sure to include all of them in the generated image.'`;
+
+            if (!fs.existsSync('output')) {
+                fs.mkdirSync('output');
+            }
+
+            const normalizedContentType = String(base64Image.contentType || '').split(';')[0].trim().toLowerCase() === 'image/jpg'
+                ? 'image/jpeg'
+                : String(base64Image.contentType || '').split(';')[0].trim().toLowerCase();
+
+            const supportedContentTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+            if (!supportedContentTypes.has(normalizedContentType)) {
+                throw new Error(`Unsupported inbound media type from Twilio: ${base64Image.contentType}`);
+            }
+
+            const extensionByMimeType = {
+                'image/jpeg': 'jpg',
+                'image/png': 'png',
+                'image/webp': 'webp'
+            };
+
+            const sourceImageFile = await toFile(
+                Buffer.from(base64Image.base64, 'base64'),
+                `${messageSid}_source.${extensionByMimeType[normalizedContentType]}`,
+                { type: normalizedContentType }
+            );
 
             const response = await withTimeout(
-                openai.responses.create({
-                    model: "gpt-4o-mini",
-                    input: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "input_text", text: PROMPT },
-                                {
-                                    type: "input_image",
-                                    image_url: `data:${base64Image.contentType};base64,${base64Image.base64}`,
-                                },
-                            ],
-                        },
-                    ],
-                    tools: [{ type: "image_generation" }],
+                openai.images.edit({
+                    model: 'gpt-image-1',
+                    prompt: PROMPT,
+                    image: sourceImageFile,
+                    size: '1024x1536'
                 }),
                 180000,
                 'OpenAI image generation'
             );
 
-            console.log(`[${messageSid}] OpenAI response received.`);
-            const processedPrompts = Array.isArray(response.output)
-                ? response.output.flatMap((item) => {
-                    const prompts = [];
-                    if (typeof item?.revised_prompt === 'string' && item.revised_prompt.trim()) {
-                        prompts.push(item.revised_prompt.trim());
-                    }
-                    if (typeof item?.prompt === 'string' && item.prompt.trim()) {
-                        prompts.push(item.prompt.trim());
-                    }
-                    if (item?.type === 'message' && Array.isArray(item.content)) {
-                        for (const contentItem of item.content) {
-                            if (contentItem?.type === 'output_text' && typeof contentItem.text === 'string' && contentItem.text.trim()) {
-                                prompts.push(contentItem.text.trim());
-                            }
-                        }
-                    }
-                    return prompts;
-                })
-                : [];
+            const firstImage = Array.isArray(response?.data) ? response.data[0] : null;
 
-            console.log(`[${messageSid}] OpenAI response summary:`, {
-                id: response.id,
-                status: response.status,
-                outputTypes: Array.isArray(response.output) ? response.output.map((item) => item.type) : [],
-                imageGenerationCalls: Array.isArray(response.output)
-                    ? response.output.filter((item) => item.type === 'image_generation_call').length
-                    : 0,
-                error: response.error || null
-            });
-            if (processedPrompts.length > 0) {
-                console.log(`[${messageSid}] OpenAI processed prompt(s):`, processedPrompts);
-            } else {
-                console.log(`[${messageSid}] OpenAI did not return a processed/revised prompt in this response.`);
-            }
-
-            const imageData = response.output
-                .filter((output) => output.type === "image_generation_call")
-                .map((output) => output.result);
-
-            if (imageData.length > 0) {
-                const imageBase64 = imageData[0];
+            if (firstImage?.b64_json) {
+                const imageBase64 = firstImage.b64_json;
                 // Create output folder if it doesn't exist
                 if (!fs.existsSync('output')) {
                 fs.mkdirSync('output');
                 }
                 
                 // Save the generated image first
-                const generatedImagePath = `output/${req.body.SmsMessageSid}.png`;
+                const generatedImagePath = `output/${messageSid}.png`;
                 fs.writeFileSync(generatedImagePath, Buffer.from(imageBase64, "base64"));
                 
                 // Apply mask to the generated image
                 const maskPath = 'input/mask.png';
-                const finalImagePath = `output/${req.body.SmsMessageSid}_twilio.png`;
+                const finalImagePath = `output/${messageSid}_twilio.png`;
                 
                 await sharp(generatedImagePath)
                 .composite([{ input: maskPath, blend: 'over' }]) // Changed from 'multiply' to 'over' to put mask on top
@@ -216,8 +202,8 @@ app.post('/message', async (req, res) => {
                 await twilioClient.messages.create({
                 from: req.body.To,
                 to: req.body.From, 
-                body: `Your new image is ready. Enjoy 🥳. Feel free to share on socials.`,
-                mediaUrl: `https://${req.headers['x-forwarded-host']}/${req.body.SmsMessageSid}_twilio.png`
+                body: `Your new anime-style image is ready. Enjoy 🥳. Feel free to share on socials using #NDCcopenhagen.`,
+                mediaUrl: `https://${req.headers['x-forwarded-host']}/${messageSid}_twilio.png`
                 });
 
                 console.log(`[${messageSid}] Image generated and delivered successfully.`);
@@ -233,7 +219,7 @@ app.post('/message', async (req, res) => {
                 });
 
             } else {
-                console.log(response.output.content);
+                console.log(response);
                 throw new Error('Image generation returned no image data.');
             }
         } catch (error) {
@@ -253,7 +239,7 @@ app.post('/message', async (req, res) => {
             await twilioClient.messages.create({
                 from: req.body.To,
                 to: req.body.From, 
-                body: `We're really sorry, there was an error processing your image. Please resend the image, and we'll try again.`
+                body: `We're really sorry, there was an error processing your image. Please resend the image, and we'll try again. Find Mish if you're having issues, and she'll try to help.`
             });
         }
 
