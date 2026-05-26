@@ -22,6 +22,7 @@ A WhatsApp bot that transforms user selfies into cartoon, using whatever style y
 - **[Sharp](https://github.com/lovell/sharp)** - High-performance image processing library
 - **[Axios](https://axios-http.com/)** - HTTP client for media downloads
 - **[dotenv](https://www.npmjs.com/package/dotenv)** - Environment variable management
+- **[turn.js](http://www.turnjs.com/)** - Flipbook animation
 
 ## 📋 Prerequisites
 
