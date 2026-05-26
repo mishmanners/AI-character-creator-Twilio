@@ -134,8 +134,8 @@ app.post('/message', async (req, res) => {
             fs.writeFileSync(inputImagePath, Buffer.from(base64Image.base64, "base64"));
             console.log('Saved input image:', inputImagePath); */
 
-            const PROMPT = `Create a joseim, moe anime style image of the person(s) in the photo. Clean white background, and only white background, not transparent. Don't add any new person if the original image doesn't have that person. Don't add any text in the image. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Don't add any extra objects in the image, only the person(s) in the original photo, and only objects that the person is wearing, holding, or interacting with in the original photo, for example if the person is sitting on a chair. If there are multiple people in the photo, make sure to include all of them in the generated image.'`;
-
+            const PROMPT = `'add your prompt here'`;
+         
             if (!fs.existsSync('output')) {
                 fs.mkdirSync('output');
             }
@@ -202,7 +202,7 @@ app.post('/message', async (req, res) => {
                 await twilioClient.messages.create({
                 from: req.body.To,
                 to: req.body.From, 
-                body: `Your new anime-style image is ready. Enjoy 🥳. Feel free to share on socials using #NDCcopenhagen.`,
+                body: `[add body message here.`,
                 mediaUrl: `https://${req.headers['x-forwarded-host']}/${messageSid}_twilio.png`
                 });
 
