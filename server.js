@@ -194,7 +194,7 @@ app.post('/message', async (req, res) => {
                 await twilioClient.messages.create({
                 from: req.body.To,
                 to: req.body.From, 
-                body: `[add body message here.`,
+                body: `[add a message here that will appear along with the generated image.`,
                 mediaUrl: `https://${req.headers['x-forwarded-host']}/${messageSid}_twilio.png`
                 });
 
