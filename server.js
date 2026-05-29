@@ -38,13 +38,13 @@ const {
     TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, OPENAI_API_KEY
 } = process.env;
 
-
 const { OpenAI } = require('openai');
 const { toFile } = require('openai/uploads');
 const openai = new OpenAI({
     apiKey: OPENAI_API_KEY
 });
 
+// Timeout helper function to prevent hanging requests during media download and image generation
 function withTimeout(promise, timeoutMs, operationName) {
     return Promise.race([
         promise,
@@ -56,18 +56,10 @@ function withTimeout(promise, timeoutMs, operationName) {
     ]);
 }
 
-async function createFile(filePath) {
-    const fileContent = fs.createReadStream(filePath);
-    const result = await openai.files.create({
-      file: fileContent,
-      purpose: "vision",
-    });
-    return result.id;
-}
-
 const { downloadTwilioMedia, encodeImage } = require('./utils');
 const sharp = require('sharp');
 
+// main webhook to handle the WhatsApp messages
 app.post('/message', async (req, res) => {
 
     const twiml = new twilio.twiml.MessagingResponse();
@@ -254,12 +246,9 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Start the server
 const port = parseInt(process.env.PORT || '3001');
 console.log('PORT RECEIVED', port)
-app.listen(port, async () => {
-    
-    maskFileId = await createFile('input/mask.png');
-    console.log('maskFileId', maskFileId);
-
+app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
