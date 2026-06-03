@@ -9,7 +9,7 @@
 <body>
     <div class="header">
         <h1>Image Gallery</h1>
-        <p>Add a subheading here</p>
+        <p>Add title two here</p>
     </div>
     
     <div class="carousel-container">
@@ -19,7 +19,7 @@
         
         <div id="no-images" class="no-images" style="display: none;">
             <h3>No images found</h3>
-            <p>Send an image to the WhatsApp bot to generate an AI anime-style image.</p>
+            <p>Send an image to the WhatsApp bot to generate an image.</p>
             <button class="refresh-btn" onclick="loadImages()">Refresh</button>
         </div>
         
@@ -54,6 +54,7 @@
         let pendingLoadImages = false;
         let isProgrammaticRebuild = false;
         let rebuildSafetyTimeout = null;
+        let usesLeadingSpacer = false;
 
         function getTotalPages() {
             return images.length;
@@ -61,6 +62,26 @@
 
         function getFlipbookElement() {
             return window.jQuery ? window.jQuery('#flipbook') : null;
+        }
+
+        function shouldUseLeadingSpacer(displayMode) {
+            return displayMode === 'double' && getTotalPages() > 1;
+        }
+
+        function toFlipbookPage(page) {
+            const numericPage = Number(page);
+            const normalized = Number.isFinite(numericPage) && numericPage > 0 ? numericPage : 1;
+            return usesLeadingSpacer ? normalized + 1 : normalized;
+        }
+
+        function toLogicalPage(page, allowZero = false) {
+            const numericPage = Number(page);
+            if (!Number.isFinite(numericPage) || numericPage < 1) {
+                return allowZero ? 0 : 1;
+            }
+
+            const logical = usesLeadingSpacer ? numericPage - 1 : numericPage;
+            return allowZero ? Math.max(0, logical) : Math.max(1, logical);
         }
 
         function isDoubleDisplayActive() {
@@ -76,9 +97,19 @@
             if (!isTurnInitialized) return [currentPage, currentPage];
             try {
                 const view = getFlipbookElement().turn('view') || [currentPage, currentPage];
-                const left = Number(view[0]) || 0;
-                const right = Number(view[1]) || left;
-                return [left, right];
+                const logicalView = view
+                    .map((page) => toLogicalPage(page, true))
+                    .filter((page) => page >= 1 && page <= getTotalPages());
+
+                if (logicalView.length === 0) {
+                    return [currentPage, currentPage];
+                }
+
+                if (logicalView.length === 1) {
+                    return [logicalView[0], logicalView[0]];
+                }
+
+                return [logicalView[0], logicalView[1]];
             } catch (_) {
                 return [currentPage, currentPage];
             }
@@ -250,11 +281,31 @@
             if (!$flipbook) return;
 
             const { width, height, display } = getBookDimensions();
+            const requireLeadingSpacer = shouldUseLeadingSpacer(display);
+
+            if (requireLeadingSpacer !== usesLeadingSpacer) {
+                initFlipbook(currentPage);
+                return;
+            }
+
             $flipbook.turn('display', display);
             $flipbook.turn('size', width, height);
             $flipbook.turn('center');
             createDots();
             updateDots();
+        }
+
+        function buildSpacerPageElement() {
+            const page = document.createElement('div');
+            page.className = 'flip-page';
+
+            const slot = document.createElement('div');
+            slot.className = 'spread-empty';
+            slot.setAttribute('aria-hidden', 'true');
+            slot.style.visibility = 'hidden';
+
+            page.appendChild(slot);
+            return page;
         }
 
         function buildPageElement(imageData, pageIndex) {
@@ -288,20 +339,28 @@
             const $flipbook = getFlipbookElement();
             if (!$flipbook) return;
 
-            const safePage = Math.max(1, Math.min(pageToOpen, getTotalPages() || 1));
+            const requestedPage = Math.max(1, Math.min(pageToOpen, getTotalPages() || 1));
 
             if (isTurnInitialized) {
                 $flipbook.turn('destroy');
                 isTurnInitialized = false;
             }
 
+            const { width, height, display } = getBookDimensions();
+            usesLeadingSpacer = shouldUseLeadingSpacer(display);
+
             $flipbook.empty();
+
+            if (usesLeadingSpacer) {
+                $flipbook.append(buildSpacerPageElement());
+            }
 
             images.forEach((image, index) => {
                 $flipbook.append(buildPageElement(image, index));
             });
 
-            const { width, height, display } = getBookDimensions();
+            const safePage = Math.max(1, Math.min(requestedPage, getTotalPages() || 1));
+            const safeFlipbookPage = toFlipbookPage(safePage);
 
             isProgrammaticRebuild = true;
             if (rebuildSafetyTimeout) {
@@ -320,7 +379,7 @@
                 when: {
                     turning: () => {},
                     turned: (_, page) => {
-                        setCurrentPage(page);
+                        setCurrentPage(toLogicalPage(page));
 
                         if (isProgrammaticRebuild) {
                             isProgrammaticRebuild = false;
@@ -338,7 +397,7 @@
             });
 
             isTurnInitialized = true;
-            $flipbook.turn('page', safePage);
+            $flipbook.turn('page', safeFlipbookPage);
             setCurrentPage(safePage);
             createDots();
             updateDots();
@@ -363,7 +422,7 @@
             const totalPages = getTotalPages();
             if (!isTurnInitialized || totalPages === 0) return;
             const targetPage = Math.max(1, Math.min(page, totalPages));
-            getFlipbookElement().turn('page', targetPage);
+            getFlipbookElement().turn('page', toFlipbookPage(targetPage));
         }
 
         function appendPagesToFlipbook(appendedImages) {
@@ -374,9 +433,10 @@
 
             try {
                 let pageNumber = $flipbook.turn('pages') + 1;
+                const firstImageIndex = images.length - appendedImages.length;
 
                 appendedImages.forEach((image, idx) => {
-                    const pageElement = buildPageElement(image, pageNumber + idx - 1);
+                    const pageElement = buildPageElement(image, firstImageIndex + idx);
                     $flipbook.turn('addPage', pageElement, pageNumber + idx);
                 });
 
@@ -556,4 +616,3 @@
     </script>
 </body>
 </html>
-
