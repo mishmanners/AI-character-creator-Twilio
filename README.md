@@ -152,7 +152,8 @@ https://your-domain.com/
 
 You can configure the messaging and image styling in the `server.js` file:
 
-- **Change the style of image generated**: you can specify the type of image you'd like in the `PROMPT` which can be found on line 129
+- **Change the style of image generated**: you can specify the type of image you'd like in the `PROMPT` which can be found on line 129. An example of a good image generation prompt is: `Create an anime style image of the person(s) in the photo. Clean white background, and only white background, not transparent. Don't add any extra objects in the image, only the person(s) in the original photo, and only objects that the person is wearing, holding, or interacting with in the original photo, for example if the person is sitting on a chair. If there are multiple people in the photo, make sure to include all of them in the generated image.`
+Feel free to experiment and change this as needed. Try different art styles, or even different anime styles or example `shonen jump anime`, `3D cartoon`, `lineart`. Feel free to tag me on socials `@MishManners` so I can see your creations
 - **Change the initial message received after sending an image**: you can alter the initial message that users will see from the chatbot by changing the `message` on line 84
 - **Change the final message received**: you can alter the final message that comes through with the generated image by changing the `body` on line 197
 - **Change the error message received**: you can alter the error message that comes through in the case of an error by OpenAI by changing the `body` on line 234
